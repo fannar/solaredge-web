@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SolarEdge Data</title>
+  <style>
+    :root { --bg: #0b0d10; --panel: #11151b; --muted: #8a94a6; --text: #e6edf3; --accent: #42b883; --accent-2: #3b82f6; }
+    @media (prefers-color-scheme: light) { :root { --bg: #fff; --panel: #f8fafc; --muted: #5b667a; --text: #0b1321; --accent: #16a34a; --accent-2: #2563eb; } }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; position: sticky; top: 0; background: linear-gradient(180deg, rgba(0,0,0,0.24), rgba(0,0,0,0)); backdrop-filter: blur(8px); }
+    h1 { margin: 0; font-size: 20px; }
+    main { padding: 12px 24px 24px; }
+    .kpis { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
+    .card { background: var(--panel); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 12px; min-height: 82px; }
+    .label { font-size: 12px; color: var(--muted); }
+    .value { font-size: 22px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .value.accent { color: var(--accent); }
+    .value.accent-2 { color: var(--accent-2); }
+    .row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: stretch; }
+    canvas { background: var(--panel); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; display:block; width:100%; height:100%; }
+    .status { font-size: 12px; color: var(--muted); text-align: right; }
+    @media (max-width: 1100px){ .kpis{ grid-template-columns: repeat(3,minmax(0,1fr)); } .row{ grid-template-columns: 1fr; } }
+    @media (max-width: 640px){ .kpis{ grid-template-columns: repeat(2,minmax(0,1fr)); } }
+    #chart-power-wrap { position: relative; height: 260px; }
+    #chart-pf-wrap { position: relative; height: 200px; }
+  </style>
+  <link rel="icon" href="data:," />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Displays provided SolarEdge JSON data" />
+  <meta name="robots" content="noindex" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3" defer></script>
+  <script src="/app.js" defer></script>
+  </head>
+<body>
+  <header>
+    <h1>SolarEdge Dashboard</h1>
+    <div class="status"><span id="status">Loading…</span></div>
+  </header>
+  <main>
+    <section class="kpis">
+      <div class="card"><div class="label">AC Power</div><div class="value accent" id="kpi-power-ac">–</div></div>
+      <div class="card"><div class="label">DC Power</div><div class="value" id="kpi-power-dc">–</div></div>
+      <div class="card"><div class="label">Energy</div><div class="value" id="kpi-energy">–</div></div>
+      <div class="card"><div class="label">DC Voltage</div><div class="value" id="kpi-vdc">–</div></div>
+      <div class="card"><div class="label">Frequency</div><div class="value" id="kpi-freq">–</div></div>
+      <div class="card"><div class="label">Temperature</div><div class="value" id="kpi-temp">–</div></div>
+    </section>
+    <section class="row">
+      <div class="card" style="padding:16px;">
+        <div class="label">AC Power (last 5 minutes)</div>
+        <div id="chart-power-wrap"><canvas id="chart-power"></canvas></div>
+      </div>
+      <div class="card" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="label">Power Factor</div>
+          <div class="value" id="kpi-pf">–</div>
+        </div>
+        <div id="chart-pf-wrap"><canvas id="chart-pf"></canvas></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+
