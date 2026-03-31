@@ -1,6 +1,6 @@
 # SolarEdge Data Viewer
 
-Simple Node.js app (Express) that proxies data from an external endpoint at `/api` and displays it in a small UI at `/`.
+Simple TypeScript app (Express) that proxies data from an external SolarEdge endpoint at `/api` and displays it in a monitoring dashboard at `/`.
 
 ## Run locally
 
@@ -10,9 +10,16 @@ Simple Node.js app (Express) that proxies data from an external endpoint at `/ap
 npm install
 ```
 
-2. Start the server:
+2. Run in development mode:
 
 ```bash
+npm run dev
+```
+
+Or build and start:
+
+```bash
+npm run build
 npm start
 ```
 
@@ -22,7 +29,7 @@ npm start
 
 ## Endpoints
 
-- `/` UI that renders the data as a table and shows raw JSON
+- `/` monitoring dashboard with live-updating KPIs, power chart, and power factor gauge
 - `/api` proxies to the external SolarEdge endpoint
 
 ## Configuration
