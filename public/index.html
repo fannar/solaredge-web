@@ -3,67 +3,496 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SolarEdge Data</title>
-  <style>
-    :root { --bg: #0b0d10; --panel: #11151b; --muted: #8a94a6; --text: #e6edf3; --accent: #42b883; --accent-2: #3b82f6; }
-    @media (prefers-color-scheme: light) { :root { --bg: #fff; --panel: #f8fafc; --muted: #5b667a; --text: #0b1321; --accent: #16a34a; --accent-2: #2563eb; } }
-    * { box-sizing: border-box; }
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-    header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; position: sticky; top: 0; background: linear-gradient(180deg, rgba(0,0,0,0.24), rgba(0,0,0,0)); backdrop-filter: blur(8px); }
-    h1 { margin: 0; font-size: 20px; }
-    main { padding: 12px 24px 24px; }
-    .kpis { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
-    .card { background: var(--panel); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 12px; min-height: 82px; }
-    .label { font-size: 12px; color: var(--muted); }
-    .value { font-size: 22px; font-variant-numeric: tabular-nums; margin-top: 4px; }
-    .value.accent { color: var(--accent); }
-    .value.accent-2 { color: var(--accent-2); }
-    .row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: stretch; }
-    canvas { background: var(--panel); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; display:block; width:100%; height:100%; }
-    .status { font-size: 12px; color: var(--muted); text-align: right; }
-    @media (max-width: 1100px){ .kpis{ grid-template-columns: repeat(3,minmax(0,1fr)); } .row{ grid-template-columns: 1fr; } }
-    @media (max-width: 640px){ .kpis{ grid-template-columns: repeat(2,minmax(0,1fr)); } }
-    #chart-power-wrap { position: relative; height: 260px; }
-    #chart-pf-wrap { position: relative; height: 200px; }
-  </style>
+  <title>SolarEdge Monitor</title>
   <link rel="icon" href="data:," />
-  <meta name="color-scheme" content="light dark" />
-  <meta name="description" content="Displays provided SolarEdge JSON data" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="SolarEdge inverter monitoring dashboard" />
   <meta name="robots" content="noindex" />
   <meta name="format-detection" content="telephone=no" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:;" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3" defer></script>
   <script src="/app.js" defer></script>
-  </head>
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --surface: #121216;
+      --surface-raised: #1a1a20;
+      --border: rgba(255, 190, 60, 0.08);
+      --border-subtle: rgba(255, 255, 255, 0.04);
+      --text: #e8e4dd;
+      --text-dim: #7a756c;
+      --text-muted: #4a463f;
+      --amber: #f0a830;
+      --amber-dim: #c8872a;
+      --amber-glow: rgba(240, 168, 48, 0.15);
+      --amber-glow-strong: rgba(240, 168, 48, 0.35);
+      --teal: #48b8a0;
+      --teal-dim: rgba(72, 184, 160, 0.25);
+      --red: #e06050;
+      --grid: rgba(255, 190, 60, 0.04);
+      --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+      --font-body: 'Outfit', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 9999;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 200px;
+    }
+
+    /* Subtle grid background */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      background: linear-gradient(180deg, rgba(10,10,12,0.95) 60%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sun-icon {
+      width: 32px;
+      height: 32px;
+      position: relative;
+    }
+
+    .sun-icon .core {
+      width: 14px;
+      height: 14px;
+      background: var(--amber);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 12px var(--amber-glow-strong), 0 0 24px var(--amber-glow);
+      transition: box-shadow 0.6s ease;
+    }
+
+    .sun-icon.active .core {
+      box-shadow: 0 0 16px var(--amber-glow-strong), 0 0 40px var(--amber-glow), 0 0 60px rgba(240, 168, 48, 0.08);
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+
+    .sun-icon .ray {
+      position: absolute;
+      width: 2px;
+      height: 5px;
+      background: var(--amber);
+      border-radius: 1px;
+      top: 50%;
+      left: 50%;
+      opacity: 0.6;
+      transition: opacity 0.6s ease;
+    }
+
+    .sun-icon.active .ray { opacity: 1; }
+
+    .sun-icon .ray:nth-child(2) { transform: translate(-50%, -14px); }
+    .sun-icon .ray:nth-child(3) { transform: translate(-50%, 9px); }
+    .sun-icon .ray:nth-child(4) { transform: translate(-14px, -50%) rotate(90deg); }
+    .sun-icon .ray:nth-child(5) { transform: translate(9px, -50%) rotate(90deg); }
+    .sun-icon .ray:nth-child(6) { transform: translate(-12px, -12px) rotate(45deg); }
+    .sun-icon .ray:nth-child(7) { transform: translate(7px, -12px) rotate(-45deg); }
+    .sun-icon .ray:nth-child(8) { transform: translate(-12px, 7px) rotate(-45deg); }
+    .sun-icon .ray:nth-child(9) { transform: translate(7px, 7px) rotate(45deg); }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 16px var(--amber-glow-strong), 0 0 40px var(--amber-glow); }
+      50% { box-shadow: 0 0 20px var(--amber-glow-strong), 0 0 50px var(--amber-glow), 0 0 70px rgba(240, 168, 48, 0.06); }
+    }
+
+    h1 {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 17px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    h1 span {
+      color: var(--text-dim);
+      font-weight: 300;
+    }
+
+    .status-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.4s ease;
+    }
+
+    .status-dot.live {
+      background: var(--teal);
+      box-shadow: 0 0 6px var(--teal-dim);
+    }
+
+    /* ─── MAIN LAYOUT ─── */
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 20px 28px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ─── KPI STRIP ─── */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s ease;
+    }
+
+    .kpi:hover {
+      border-color: var(--border);
+    }
+
+    .kpi::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--amber-glow), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .kpi:hover::before { opacity: 1; }
+
+    .kpi-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      line-height: 1;
+      transition: color 0.3s ease;
+    }
+
+    .kpi-value.primary {
+      color: var(--amber);
+      text-shadow: 0 0 20px var(--amber-glow);
+    }
+
+    .kpi-value .unit {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-dim);
+      margin-left: 4px;
+    }
+
+    /* ─── CHART PANELS ─── */
+    .panels {
+      display: grid;
+      grid-template-columns: 5fr 2fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .panel-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      background: var(--surface-raised);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    #chart-power-wrap {
+      position: relative;
+      height: 240px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ─── GAUGE PANEL ─── */
+    .gauge-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gauge-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      margin: 12px 0;
+    }
+
+    .gauge-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .gauge-track {
+      fill: none;
+      stroke: var(--surface-raised);
+      stroke-width: 8;
+    }
+
+    .gauge-fill {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 452;
+      stroke-dashoffset: 452;
+      transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 0 6px var(--teal-dim));
+    }
+
+    .gauge-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .gauge-value {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--teal);
+      line-height: 1;
+    }
+
+    .gauge-unit {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .gauge-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .kpi, .panel {
+      animation: fade-up 0.5s ease both;
+    }
+
+    .kpi:nth-child(1) { animation-delay: 0.04s; }
+    .kpi:nth-child(2) { animation-delay: 0.08s; }
+    .kpi:nth-child(3) { animation-delay: 0.12s; }
+    .kpi:nth-child(4) { animation-delay: 0.16s; }
+    .kpi:nth-child(5) { animation-delay: 0.20s; }
+    .kpi:nth-child(6) { animation-delay: 0.24s; }
+
+    .panels .panel:nth-child(1) { animation-delay: 0.30s; }
+    .panels .panel:nth-child(2) { animation-delay: 0.36s; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1100px) {
+      .kpi-strip { grid-template-columns: repeat(3, 1fr); }
+      .panels { grid-template-columns: 1fr; }
+      .gauge-panel { flex-direction: row; gap: 24px; padding: 20px 28px; }
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 12px 16px 32px; }
+      header { padding: 14px 16px; }
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .kpi-value { font-size: 20px; }
+      .gauge-container { width: 140px; height: 140px; }
+      .gauge-value { font-size: 26px; }
+    }
+  </style>
+</head>
 <body>
   <header>
-    <h1>SolarEdge Dashboard</h1>
-    <div class="status"><span id="status">Loading…</span></div>
+    <div class="header-left">
+      <div class="sun-icon" id="sun-icon">
+        <div class="core"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+        <div class="ray"></div>
+      </div>
+      <h1>Solar<span>Edge</span></h1>
+    </div>
+    <div class="status-badge">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status">Connecting…</span>
+    </div>
   </header>
+
   <main>
-    <section class="kpis">
-      <div class="card"><div class="label">AC Power</div><div class="value accent" id="kpi-power-ac">–</div></div>
-      <div class="card"><div class="label">DC Power</div><div class="value" id="kpi-power-dc">–</div></div>
-      <div class="card"><div class="label">Energy</div><div class="value" id="kpi-energy">–</div></div>
-      <div class="card"><div class="label">DC Voltage</div><div class="value" id="kpi-vdc">–</div></div>
-      <div class="card"><div class="label">Frequency</div><div class="value" id="kpi-freq">–</div></div>
-      <div class="card"><div class="label">Temperature</div><div class="value" id="kpi-temp">–</div></div>
+    <section class="kpi-strip">
+      <div class="kpi">
+        <div class="kpi-label">AC Power</div>
+        <div class="kpi-value primary" id="kpi-power-ac">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">DC Power</div>
+        <div class="kpi-value" id="kpi-power-dc">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Energy</div>
+        <div class="kpi-value" id="kpi-energy">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">DC Voltage</div>
+        <div class="kpi-value" id="kpi-vdc">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Frequency</div>
+        <div class="kpi-value" id="kpi-freq">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Temperature</div>
+        <div class="kpi-value" id="kpi-temp">–</div>
+      </div>
     </section>
-    <section class="row">
-      <div class="card" style="padding:16px;">
-        <div class="label">AC Power (last 5 minutes)</div>
+
+    <section class="panels">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">AC Power Output</div>
+          <div class="panel-badge">5 min window</div>
+        </div>
         <div id="chart-power-wrap"><canvas id="chart-power"></canvas></div>
       </div>
-      <div class="card" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
-        <div style="display:flex; align-items:center; justify-content:space-between;">
-          <div class="label">Power Factor</div>
-          <div class="value" id="kpi-pf">–</div>
+
+      <div class="panel gauge-panel">
+        <div class="panel-title" style="align-self: flex-start; margin-bottom: 8px;">Power Factor</div>
+        <div class="gauge-container">
+          <svg class="gauge-svg" viewBox="0 0 160 160">
+            <circle class="gauge-track" cx="80" cy="80" r="72" />
+            <circle class="gauge-fill" id="gauge-arc" cx="80" cy="80" r="72" />
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-value" id="kpi-pf">–</div>
+            <div class="gauge-unit">percent</div>
+          </div>
         </div>
-        <div id="chart-pf-wrap"><canvas id="chart-pf"></canvas></div>
+        <div class="gauge-label">Efficiency</div>
       </div>
     </section>
   </main>
 </body>
 </html>
-
